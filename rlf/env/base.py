@@ -17,9 +17,12 @@ class MazeEnv:
     """
 
     def __init__(self, maze_map: List[str]) -> None:
-        self.maze_map: List[List[str]] = [list(row) for row in maze_map]
-        self.height: int = len(self.maze_map)
-        self.width: int = len(self.maze_map[0])
+        self._initial_maze_map: List[List[str]] = [list(row) for row in maze_map]
+        self.maze_map: List[List[str]] = [
+            row[:] for row in self._initial_maze_map
+        ]
+        self.height: int = len(self._initial_maze_map)
+        self.width: int = len(self._initial_maze_map[0])
 
         # 找到起始位置（第一个R或第一个非W位置）
         self.start_pos: Tuple[int, int] = self._find_start()
@@ -43,11 +46,13 @@ class MazeEnv:
 
     def reset(self) -> int:
         """重置环境"""
+        self.maze_map = [row[:] for row in self._initial_maze_map]
         self.agent_pos = list(self.start_pos)
         self.step_count = 0
-        return self._get_state()
+        return self.cur_state
 
-    def _get_state(self) -> int:
+    @property
+    def cur_state(self) -> int:
         """获取当前状态（位置编码）"""
         return self.agent_pos[0] * self.width + self.agent_pos[1]
 
@@ -64,9 +69,9 @@ class MazeEnv:
 
         # 检查边界
         if not (0 <= next_pos[0] < self.height and 0 <= next_pos[1] < self.width):
-            info = StepInfo.model_construct(hit='boundary')
+            info = StepInfo.model_construct(hit='boundary') # TODO: 啥意思？
             return StepResult(
-                state=self._get_state(),
+                state=self.cur_state,
                 reward=-5,
                 done=False,
                 info=info
@@ -77,7 +82,7 @@ class MazeEnv:
         if cell == 'W':
             info = StepInfo.model_construct(hit='wall')
             return StepResult(
-                state=self._get_state(),
+                state=self.cur_state,
                 reward=-2,
                 done=False,
                 info=info
@@ -100,6 +105,7 @@ class MazeEnv:
         elif cell == 'B':
             reward = 15.0
             info.hit = 'bonus'
+            # NOTE: 删掉bonus后重置要写回去
             self.maze_map[next_pos[0]][next_pos[1]] = 'R'  # 奖励只能拿一次
         elif cell == 'G':
             reward = 200.0
@@ -112,7 +118,7 @@ class MazeEnv:
             info.timeout = True
 
         return StepResult(
-            state=self._get_state(),
+            state=self.cur_state,
             reward=reward,
             done=done,
             info=info
