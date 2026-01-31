@@ -2,7 +2,7 @@
 这是一个数据模型定义模块，主要功能如下：
 定义RL框架中使用的所有Pydantic数据模型，包括环境步进结果、Agent统计信息、训练结果等
 """
-from typing import List, Optional, Any, Dict
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -106,7 +106,7 @@ class EpisodeData(BaseModel):
     total_steps: int
     success: bool
     loss: Optional[float] = None
-    agent_stats: Optional[Dict[str, Any]] = None
+    agent_stats: Optional[AgentStats] = None
 
 
 class Transition(BaseModel):

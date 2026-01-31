@@ -67,7 +67,7 @@ class MazeEnv:
             info = StepInfo.model_construct(hit='boundary')
             return StepResult(
                 state=self._get_state(),
-                reward=-100.0,
+                reward=-5,
                 done=False,
                 info=info
             )
@@ -78,7 +78,7 @@ class MazeEnv:
             info = StepInfo.model_construct(hit='wall')
             return StepResult(
                 state=self._get_state(),
-                reward=-100.0,
+                reward=-2,
                 done=False,
                 info=info
             )

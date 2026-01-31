@@ -42,6 +42,13 @@ class MazeTrainer:
             episode_reward: float = 0.0
             episode_steps: int = 0
             done: bool = False
+            if self.data_saver:
+                self.data_saver.record_initial_state(
+                    episode=episode,
+                    state=state,
+                    maze_state=[row[:] for row in self.env.maze_map],
+                    agent_pos=list(self.env.agent_pos)
+                )
 
             # 收集一个episode的数据
             while not done:
@@ -52,7 +59,7 @@ class MazeTrainer:
                 if self.data_saver:
                     self.data_saver.record_step(
                         episode=episode,
-                        step=episode_steps,
+                        step=episode_steps + 1,
                         state=state,
                         action=action,
                         reward=step_result.reward,
@@ -87,7 +94,7 @@ class MazeTrainer:
                     total_steps=episode_steps,
                     success=episode_reward > 50,
                     loss=loss,
-                    agent_stats=stats.model_dump()
+                    agent_stats=stats
                 )
 
             self.episode_rewards.append(episode_reward)
