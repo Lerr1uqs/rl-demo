@@ -1,3 +1,8 @@
+---
+Create Date: 2026-02-01
+Type: feat
+---
+
 不是 DQN 不适合走迷宫，是你的"盲人版" DQN 不适合。
 迷宫是 DQN 的经典 benchmark（比如 DeepMind 早年的很多迷宫实验），但有一个前提：Agent 得看得见墙。
 为什么你现在觉得"DQN 不适合"？

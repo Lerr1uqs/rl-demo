@@ -54,7 +54,7 @@ def main() -> None:
             learning_rate=0.001,
             gamma=0.99,
             hidden_dim=128,
-            buffer_size=10000,
+            buffer_size=50000,
             batch_size=64,
             epsilon=1.0,
             epsilon_decay=0.995,
@@ -114,6 +114,8 @@ def main() -> None:
     print(f"   最佳奖励: {result.best_reward:.2f}")
     print(f"   最后50轮平均奖励: {result.final_avg_reward:.2f}")
     print("="*60)
+
+    trainer.plot_training_curves()
 
     # 最终演示
     print("\n🎮 最终演示:")

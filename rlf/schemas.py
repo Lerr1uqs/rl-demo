@@ -104,6 +104,7 @@ class AgentStats(BaseModel):
 class TrainingResult(BaseModel):
     """训练结果"""
     episode_rewards: List[float]
+    episode_losses: List[Optional[float]]
     episode_steps: List[int]
     total_time: float
     best_reward: float

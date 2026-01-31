@@ -20,6 +20,7 @@ class MazeTrainer:
         self.agent: BaseAgent = agent
         self.episode_rewards: list[float] = []
         self.episode_steps: list[int] = []
+        self.episode_losses: list[Optional[float]] = []
         self.save_data = save_data
         self.data_saver = None
         if save_data:
@@ -109,6 +110,7 @@ class MazeTrainer:
 
             self.episode_rewards.append(episode_reward)
             self.episode_steps.append(episode_steps)
+            self.episode_losses.append(loss)
 
             # 打印训练信息
             if (episode + 1) % print_freq == 0:
@@ -126,7 +128,11 @@ class MazeTrainer:
                 print(f"⏱️  Time: {elapsed_time:.2f}s")
                 print(f"🎯 Avg Reward (last {print_freq}): {avg_reward:.2f}")
                 print(f"👣 Avg Steps: {avg_steps:.2f}")
-                print(f"📉 Loss: {loss:.4f}" if loss else "📉 Loss: warming up...")
+                print(
+                    f"📉 Loss: {loss:.4f}"
+                    if loss is not None
+                    else "📉 Loss: warming up..."
+                )
 
                 print(f"\n📈 Agent Stats:")
                 self._print_stats(agent_stats)
@@ -156,6 +162,7 @@ class MazeTrainer:
 
         return TrainingResult(
             episode_rewards=self.episode_rewards,
+            episode_losses=self.episode_losses,
             episode_steps=self.episode_steps,
             total_time=total_time,
             best_reward=best_reward,
@@ -184,6 +191,52 @@ class MazeTrainer:
             print(f"   total_reuses: {stats.total_reuses}")
         if stats.data_usage:
             print(f"   data_usage: {stats.data_usage}")
+
+    def plot_training_curves(self) -> None:
+        """弹出窗口展示训练曲线"""
+        import matplotlib.pyplot as plt
+
+        episode_indices: list[int] = list(
+            range(1, len(self.episode_rewards) + 1)
+        )
+
+        reward_title = f"{self.agent.stats.agent_type} Reward Curve"
+        plt.figure("Reward Curve")
+        plt.plot(episode_indices, self.episode_rewards, label="Reward")
+        plt.xlabel("Episode")
+        plt.ylabel("Reward")
+        plt.title(reward_title)
+        plt.grid(True, linestyle="--", alpha=0.5)
+        plt.legend()
+
+        loss_episodes: list[int] = []
+        loss_values: list[float] = []
+        for index, loss in enumerate(self.episode_losses):
+            if loss is None:
+                continue
+            loss_episodes.append(index + 1)
+            loss_values.append(loss)
+
+        loss_title = f"{self.agent.stats.agent_type} Loss Curve"
+        plt.figure("Loss Curve")
+        if len(loss_values) > 0:
+            plt.plot(loss_episodes, loss_values, label="Loss")
+            plt.legend()
+        else:
+            plt.text(
+                0.5,
+                0.5,
+                "暂无可用Loss数据",
+                ha="center",
+                va="center",
+                transform=plt.gca().transAxes
+            )
+        plt.xlabel("Episode")
+        plt.ylabel("Loss")
+        plt.title(loss_title)
+        plt.grid(True, linestyle="--", alpha=0.5)
+
+        plt.show()
 
     def demo(self, render: bool = True) -> float:
         """演示训练好的agent"""
