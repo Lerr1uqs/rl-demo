@@ -85,16 +85,17 @@ class MazeTrainer:
             # 训练
             loss: Optional[float] = self.agent.train()
 
+            agent_stats: AgentStats = self.agent.stats
+
             # 完成episode记录
             if self.data_saver:
-                stats = self.agent.stats
                 self.data_saver.finalize_episode(
                     episode=episode,
                     total_reward=episode_reward,
                     total_steps=episode_steps,
                     success=episode_reward > 50,
                     loss=loss,
-                    agent_stats=stats
+                    agent_stats=agent_stats
                 )
 
             self.episode_rewards.append(episode_reward)
@@ -118,9 +119,8 @@ class MazeTrainer:
                 print(f"👣 Avg Steps: {avg_steps:.2f}")
                 print(f"📉 Loss: {loss:.4f}" if loss else "📉 Loss: warming up...")
 
-                stats: AgentStats = self.agent.stats
                 print(f"\n📈 Agent Stats:")
-                self._print_stats(stats)
+                self._print_stats(agent_stats)
                 print(f"{'─'*60}")
 
             # 渲染
