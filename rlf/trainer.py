@@ -23,7 +23,9 @@ class MazeTrainer:
         self.save_data = save_data
         self.data_saver = None
         if save_data:
-            self.data_saver = TrainingDataSaver()
+            self.data_saver = TrainingDataSaver(
+                policy_type=self.agent.policy_type
+            )
 
     def train(
         self,
@@ -43,20 +45,26 @@ class MazeTrainer:
             episode_steps: int = 0
             done: bool = False
             if self.data_saver:
+                initial_action_scores = self.agent.action_distribution(state)
                 self.data_saver.record_initial_state(
                     episode=episode,
                     state=state,
                     maze_state=[row[:] for row in self.env.maze_map],
-                    agent_pos=list(self.env.agent_pos)
+                    agent_pos=list(self.env.agent_pos),
+                    action_scores=initial_action_scores
                 )
 
             # 收集一个episode的数据
             while not done:
+                action_scores = None
+                if self.data_saver:
+                    action_scores = self.agent.action_distribution(state)
                 action: int = self.agent.select_action(state, training=True)
                 step_result: StepResult = self.env.step(action)
 
                 # 保存步骤数据
                 if self.data_saver:
+                    assert action_scores is not None
                     self.data_saver.record_step(
                         episode=episode,
                         step=episode_steps + 1,
@@ -66,7 +74,8 @@ class MazeTrainer:
                         maze_state=[row[:] for row in self.env.maze_map],  # 深拷贝
                         agent_pos=list(self.env.agent_pos),
                         info=step_result.info,
-                        cumulative_reward=episode_reward + step_result.reward
+                        cumulative_reward=episode_reward + step_result.reward,
+                        action_scores=action_scores
                     )
 
                 self.agent.store_transition(

@@ -9,7 +9,15 @@ from typing import Optional, List
 
 from rlf.agents.base import BaseAgent
 from rlf.agents.qlearn import PolicyNetwork
-from rlf.schemas import PPOConfig, AgentStats, PPOTransition
+from rlf.schemas import (
+    PPOConfig,
+    AgentStats,
+    PPOTransition,
+    ActionScoresData,
+    AlgorithmType,
+    ScoreType,
+    ACTION_ORDER
+)
 
 
 class ValueNetwork(nn.Module):
@@ -198,6 +206,21 @@ class PPOAgent(BaseAgent):
 
         return avg_policy_loss
 
+    def action_distribution(self, state: int) -> ActionScoresData:
+        assert self.action_dim == len(ACTION_ORDER)
+        state_tensor: torch.Tensor = F.one_hot(
+            torch.tensor(state),
+            self.state_dim
+        ).float()
+        with torch.no_grad():
+            probs: torch.Tensor = self.policy_net(state_tensor)
+        scores: List[float] = [float(value) for value in probs.tolist()]
+        return ActionScoresData(
+            score_type=ScoreType.POLICY_PROBS,
+            scores=scores,
+            action_order=ACTION_ORDER[:]
+        )
+
     @property
     def stats(self) -> AgentStats:
         avg_policy_loss: float = self.total_policy_loss / max(1, self.loss_count)
@@ -211,3 +234,7 @@ class PPOAgent(BaseAgent):
             total_reuses=self.reuse_count,
             data_usage=f'{self.config.ppo_epochs}x (limited reuse)'
         )
+
+    @property
+    def policy_type(self) -> AlgorithmType:
+        return AlgorithmType.PPO

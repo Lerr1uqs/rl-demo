@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel, Field
 import time
 from rich import print
+from rlf.schemas import ACTION_ORDER, ACTION_SYMBOLS
 
 # ==================== 数据类定义 ====================
 
@@ -922,9 +923,8 @@ class MazeTrainer:
             if render:
                 time.sleep(0.1)
                 self.env.render()
-                action_symbols: List[str] = ['⬆️', '⬇️', '⬅️', '➡️']
                 print(
-                    f"Action: {action_symbols[action]}, "
+                    f"Action: {ACTION_SYMBOLS[ACTION_ORDER[action]]}, "
                     f"Reward: {step_result.reward:.1f}, "
                     f"Hit: {step_result.info.hit}"
                 )

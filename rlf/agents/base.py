@@ -3,7 +3,7 @@
 定义可插拔Agent基类接口
 """
 from typing import Optional
-from rlf.schemas import AgentStats
+from rlf.schemas import AgentStats, ActionScoresData, AlgorithmType
 
 
 class BaseAgent:
@@ -33,7 +33,16 @@ class BaseAgent:
         """训练"""
         raise NotImplementedError
 
+    def action_distribution(self, state: int) -> ActionScoresData:
+        """返回当前状态下动作分布"""
+        raise NotImplementedError
+
     @property
     def stats(self) -> AgentStats:
         """统计信息"""
+        raise NotImplementedError
+
+    @property
+    def policy_type(self) -> AlgorithmType:
+        """算法类型"""
         raise NotImplementedError

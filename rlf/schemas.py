@@ -2,8 +2,47 @@
 这是一个数据模型定义模块，主要功能如下：
 定义RL框架中使用的所有Pydantic数据模型，包括环境步进结果、Agent统计信息、训练结果等
 """
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from enum import StrEnum
+from typing import Dict, List, Optional
+from pydantic import BaseModel, Field, model_validator
+
+
+class AlgorithmType(StrEnum):
+    """算法类型枚举"""
+    DQN = "dqn"
+    PG = "pg"
+    PPO = "ppo"
+    SARSA = "sarsa"
+    QLEARN = "qlearn"
+
+
+class ScoreType(StrEnum):
+    """动作分数类型枚举"""
+    Q_VALUES = "q_values"
+    POLICY_PROBS = "policy_probs"
+
+
+class ActionName(StrEnum):
+    """动作名称枚举"""
+    UP = "UP"
+    DOWN = "DOWN"
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+
+
+ACTION_ORDER: List[ActionName] = [
+    ActionName.UP,
+    ActionName.DOWN,
+    ActionName.LEFT,
+    ActionName.RIGHT
+]
+
+ACTION_SYMBOLS: Dict[ActionName, str] = {
+    ActionName.UP: "↑",
+    ActionName.DOWN: "↓",
+    ActionName.LEFT: "←",
+    ActionName.RIGHT: "→"
+}
 
 
 class StepInfo(BaseModel):
@@ -85,12 +124,25 @@ class StepInfoData(BaseModel):
     timeout: bool
 
 
+class ActionScoresData(BaseModel):
+    """动作分布数据"""
+    score_type: ScoreType
+    scores: List[float]
+    action_order: List[ActionName] = Field(default_factory=lambda: ACTION_ORDER[:])
+
+    @model_validator(mode="after")
+    def _validate_lengths(self) -> "ActionScoresData":
+        assert len(self.scores) == len(self.action_order)
+        return self
+
+
 class StepData(BaseModel):
     """步数据"""
     step: int
     state: int
     action: int
     action_name: str
+    action_scores: ActionScoresData
     reward: float
     cumulative_reward: float
     agent_pos: List[int]
@@ -107,6 +159,17 @@ class EpisodeData(BaseModel):
     success: bool
     loss: Optional[float] = None
     agent_stats: Optional[AgentStats] = None
+
+
+class TrainingSessionData(BaseModel):
+    """训练会话导出数据"""
+    session_id: str
+    agent_name: str
+    type: AlgorithmType
+    action_order: List[ActionName]
+    timestamp: str
+    total_episodes: int
+    episodes: List[EpisodeData]
 
 
 class Transition(BaseModel):

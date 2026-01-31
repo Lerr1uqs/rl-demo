@@ -14,7 +14,11 @@ from rlf.schemas import (
     DQNConfig,
     TrainingConfig,
     AgentStats,
-    Transition
+    Transition,
+    ActionScoresData,
+    AlgorithmType,
+    ScoreType,
+    ACTION_ORDER
 )
 
 
@@ -184,6 +188,21 @@ class DQNAgent(BaseAgent):
 
         return loss_value
 
+    def action_distribution(self, state: int) -> ActionScoresData:
+        assert self.action_dim == len(ACTION_ORDER)
+        state_tensor: torch.Tensor = F.one_hot(
+            torch.tensor(state),
+            self.state_dim
+        ).float()
+        with torch.no_grad():
+            q_values: torch.Tensor = self.q_net(state_tensor)
+        scores: List[float] = [float(value) for value in q_values.tolist()]
+        return ActionScoresData(
+            score_type=ScoreType.Q_VALUES,
+            scores=scores,
+            action_order=ACTION_ORDER[:]
+        )
+
     @property
     def stats(self) -> AgentStats:
         avg_loss: float = self.total_loss / max(1, self.loss_count)
@@ -195,6 +214,10 @@ class DQNAgent(BaseAgent):
             train_steps=self.train_steps,
             data_usage='∞ (experience replay)'
         )
+
+    @property
+    def policy_type(self) -> AlgorithmType:
+        return AlgorithmType.DQN
 
 
 class PGAgent(BaseAgent):
@@ -296,6 +319,21 @@ class PGAgent(BaseAgent):
 
         return loss_value
 
+    def action_distribution(self, state: int) -> ActionScoresData:
+        assert self.action_dim == len(ACTION_ORDER)
+        state_tensor: torch.Tensor = F.one_hot(
+            torch.tensor(state),
+            self.state_dim
+        ).float()
+        with torch.no_grad():
+            probs: torch.Tensor = self.policy_net(state_tensor)
+        scores: List[float] = [float(value) for value in probs.tolist()]
+        return ActionScoresData(
+            score_type=ScoreType.POLICY_PROBS,
+            scores=scores,
+            action_order=ACTION_ORDER[:]
+        )
+
     @property
     def stats(self) -> AgentStats:
         avg_loss: float = self.total_loss / max(1, self.loss_count)
@@ -305,3 +343,7 @@ class PGAgent(BaseAgent):
             avg_loss=avg_loss,
             data_usage='1x (immediate discard)'
         )
+
+    @property
+    def policy_type(self) -> AlgorithmType:
+        return AlgorithmType.PG

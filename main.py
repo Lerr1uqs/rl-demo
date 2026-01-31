@@ -117,7 +117,7 @@ def main() -> None:
 
     # 最终演示
     print("\n🎮 最终演示:")
-    trainer.demo(render=True)
+    # trainer.demo(render=True)
 
 
 if __name__ == "__main__":

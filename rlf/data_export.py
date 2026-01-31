@@ -7,17 +7,33 @@ import os
 from typing import List, Optional
 from datetime import datetime
 
-from rlf.schemas import StepInfoData, StepData, EpisodeData, AgentStats, StepInfo
+from rlf.schemas import (
+    StepInfoData,
+    StepData,
+    EpisodeData,
+    AgentStats,
+    StepInfo,
+    ActionScoresData,
+    TrainingSessionData,
+    AlgorithmType,
+    ACTION_ORDER
+)
 
 
 class TrainingDataSaver:
     """训练数据保存器"""
 
-    def __init__(self, save_dir: str = "./training_data") -> None:
+    def __init__(
+        self,
+        policy_type: AlgorithmType,
+        save_dir: str = "./training_data"
+    ) -> None:
         self.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
         self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.episodes_data: List[EpisodeData] = []
+        self.policy_type = policy_type
+        self.action_order = ACTION_ORDER[:]
 
     def _add_step_data(self, episode: int, step_data: StepData) -> None:
         """添加步数据并确保episode结构存在"""
@@ -38,7 +54,8 @@ class TrainingDataSaver:
         episode: int,
         state: int,
         maze_state: List[List[str]],
-        agent_pos: List[int]
+        agent_pos: List[int],
+        action_scores: ActionScoresData
     ) -> None:
         """记录episode的初始状态"""
         step_info_data = StepInfoData(
@@ -51,6 +68,7 @@ class TrainingDataSaver:
             state=state,
             action=-1,
             action_name="INIT",
+            action_scores=action_scores,
             reward=0.0,
             cumulative_reward=0.0,
             agent_pos=agent_pos,
@@ -70,21 +88,21 @@ class TrainingDataSaver:
         maze_state: List[List[str]],
         agent_pos: List[int],
         info: StepInfo,
-        cumulative_reward: float
+        cumulative_reward: float,
+        action_scores: ActionScoresData
     ) -> None:
         """记录单步数据"""
-        action_names = ['UP', 'DOWN', 'LEFT', 'RIGHT']
-
         step_info_data = StepInfoData(
-            hit=info.hit if hasattr(info, 'hit') else "",
-            timeout=info.timeout if hasattr(info, 'timeout') else False
+            hit=info.hit,
+            timeout=info.timeout
         )
 
         step_data = StepData(
             step=step,
             state=state,
             action=action,
-            action_name=action_names[action],
+            action_name=self.action_order[action].value,
+            action_scores=action_scores,
             reward=reward,
             cumulative_reward=cumulative_reward,
             agent_pos=agent_pos,
@@ -119,16 +137,18 @@ class TrainingDataSaver:
         """保存到文件"""
         filename = f"{self.save_dir}/{self.session_id}_{agent_name}.json"
 
-        data = {
-            "session_id": self.session_id,
-            "agent_name": agent_name,
-            "timestamp": datetime.now().isoformat(),
-            "total_episodes": len(self.episodes_data),
-            "episodes": [episode.model_dump() for episode in self.episodes_data]
-        }
+        session_data = TrainingSessionData(
+            session_id=self.session_id,
+            agent_name=agent_name,
+            type=self.policy_type,
+            action_order=self.action_order,
+            timestamp=datetime.now().isoformat(),
+            total_episodes=len(self.episodes_data),
+            episodes=self.episodes_data
+        )
 
         with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            json.dump(session_data.model_dump(), f, indent=2, ensure_ascii=False)
 
         print(f"\n💾 训练数据已保存到: {filename}")
         return filename
