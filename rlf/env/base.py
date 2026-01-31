@@ -103,12 +103,12 @@ class MazeEnv:
             reward = -10.0
             info.hit = 'trap'
         elif cell == 'B':
-            reward = 15.0
+            reward = 20.0
             info.hit = 'bonus'
             # NOTE: 删掉bonus后重置要写回去
             self.maze_map[next_pos[0]][next_pos[1]] = 'R'  # 奖励只能拿一次
         elif cell == 'G':
-            reward = 200.0
+            reward = 100.0
             done = True
             info.hit = 'goal'
 

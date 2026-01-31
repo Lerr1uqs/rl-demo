@@ -5,14 +5,15 @@
 import sys
 from pathlib import Path
 from typing import List, Optional
-
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, Container
+from textual.screen import ModalScreen
 from textual.widgets import (
     Header,
     Footer,
     Static,
-    Label
+    Label,
+    Input
 )
 from textual.reactive import reactive
 from textual.binding import Binding
@@ -29,6 +30,79 @@ SCORE_TYPE_LABELS = {
     ScoreType.Q_VALUES: "Q值",
     ScoreType.POLICY_PROBS: "策略概率"
 }
+
+
+class EpisodeJumpScreen(ModalScreen):
+    """Episode跳转浮窗"""
+
+    BINDINGS = [
+        ("escape", "close", "关闭"),
+        ("q", "close", "关闭"),
+    ]
+
+    CSS = """
+    EpisodeJumpScreen {
+        background: rgba(0, 0, 0, 0.35);
+        align: center middle;
+    }
+
+    #episode-dialog {
+        width: 40;
+        height: auto;
+        padding: 1 2;
+        border: round $primary;
+        background: $panel;
+    }
+
+    #episode-input-title {
+        text-align: center;
+    }
+
+    #episode-input-error {
+        color: $error;
+        text-align: center;
+        height: 1;
+    }
+    """
+
+    def __init__(self, max_episode: int) -> None:
+        super().__init__()
+        self.max_episode = max_episode
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="episode-dialog"):
+            yield Label("[bold]跳转Episode[/bold]", id="episode-input-title")
+            yield Input(placeholder="输入Episode编号", id="episode-input")
+            yield Static("", id="episode-input-error")
+
+    def on_mount(self) -> None:
+        input_widget = self.query_one("#episode-input", Input)
+        self.set_focus(input_widget)
+
+    def action_close(self) -> None:
+        self.app.pop_screen()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "episode-input":
+            return
+        input_text = event.value.strip()
+        error_label = self.query_one("#episode-input-error", Static)
+        if not input_text:
+            error_label.update("请输入Episode编号")
+            return
+        if not input_text.isdigit():
+            error_label.update("请输入数字")
+            return
+
+        target_episode = int(input_text)
+        if target_episode < 1 or target_episode > self.max_episode:
+            error_label.update(f"范围应为 1 - {self.max_episode}")
+            return
+
+        app = self.app
+        if isinstance(app, TrainingReplayApp):
+            app.jump_to_episode(target_episode)
+        self.app.pop_screen()
 
 
 class MazeDisplay(Static):
@@ -233,6 +307,7 @@ class TrainingReplayApp(App):
         Binding("down", "next_episode", "下一个Episode"),
         Binding("left", "prev_step", "上一个Step"),
         Binding("right", "next_step", "下一个Step"),
+        Binding("e", "toggle_episode_input", "输入Episode"),
         Binding("q", "quit", "退出"),
     ]
 
@@ -332,15 +407,35 @@ class TrainingReplayApp(App):
         action_distribution.update_info()
         
         # 更新状态栏
+        self._update_status_bar(total_steps=len(steps))
+
+    def _update_status_bar(self, total_steps: int) -> None:
+        """更新状态栏显示"""
+        assert self.session_data is not None
         controls_hint = self.query_one("#controls-hint", Static)
         controls_hint.update(
             f"[bold]Session:[/bold] {self.session_data.session_id} | "
             f"[bold]Agent:[/bold] {self.session_data.agent_name} | "
             f"[bold]Algo:[/bold] {self.session_data.type} | "
             f"[bold]Episode:[/bold] {self.current_episode + 1}/{len(self.episodes)} | "
-            f"[bold]Step:[/bold] {self.current_step + 1}/{len(steps)} | "
-            f"[dim]↑↓: 切换Episode | ←→: 切换Step | q: 退出[/dim]"
+            f"[bold]Step:[/bold] {self.current_step + 1}/{total_steps} | "
+            f"[dim]↑↓: 切换Episode | ←→: 切换Step | e: 输入Episode | q: 退出[/dim]"
         )
+
+    def action_toggle_episode_input(self) -> None:
+        """切换Episode输入框"""
+        if not self.episodes:
+            return
+        if isinstance(self.screen, EpisodeJumpScreen):
+            return
+        self.push_screen(EpisodeJumpScreen(len(self.episodes)))
+
+    def jump_to_episode(self, target_episode: int) -> None:
+        """跳转到指定Episode"""
+        if not self.episodes:
+            return
+        assert 1 <= target_episode <= len(self.episodes)
+        self.current_episode = target_episode - 1
 
     def watch_current_episode(self, old_value: int, new_value: int) -> None:
         """监听episode变化"""
@@ -353,13 +448,21 @@ class TrainingReplayApp(App):
 
     def action_prev_episode(self) -> None:
         """上一个episode"""
-        if self.current_episode > 0:
-            self.current_episode -= 1
+        if not self.episodes:
+            return
+        if self.current_episode == 0:
+            self.current_episode = len(self.episodes) - 1
+            return
+        self.current_episode -= 1
 
     def action_next_episode(self) -> None:
         """下一个episode"""
-        if self.current_episode < len(self.episodes) - 1:
-            self.current_episode += 1
+        if not self.episodes:
+            return
+        if self.current_episode >= len(self.episodes) - 1:
+            self.current_episode = 0
+            return
+        self.current_episode += 1
 
     def action_prev_step(self) -> None:
         """上一个step"""

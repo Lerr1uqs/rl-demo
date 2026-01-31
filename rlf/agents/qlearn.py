@@ -142,7 +142,7 @@ class DQNAgent(BaseAgent):
         states_tensor: torch.Tensor = F.one_hot(
             torch.tensor(states),
             self.state_dim
-        ).float()
+        ).float() # shape: (states_size, state_dim)
         actions_tensor: torch.Tensor = torch.tensor(actions).long()
         rewards_tensor: torch.Tensor = torch.tensor(rewards).float()
         next_states_tensor: torch.Tensor = F.one_hot(
@@ -152,6 +152,8 @@ class DQNAgent(BaseAgent):
         dones_tensor: torch.Tensor = torch.tensor(dones).float()
 
         # 计算当前Q值
+        # self.q_net(states_tensor): shape (states_size, action_dim) 返回每一个状态的全部action的q值
+        # gather: 从全部action的q值中选中对应action的q值
         current_q: torch.Tensor = self.q_net(states_tensor).gather(
             1,
             actions_tensor.unsqueeze(1)
