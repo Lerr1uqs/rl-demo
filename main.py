@@ -17,6 +17,7 @@ from rlf import (
     DQNConfig,
     PPOConfig
 )
+from rlf.agents.base import BaseAgent
 from rlf.schemas import TrainingConfig
 
 
@@ -46,9 +47,10 @@ def main() -> None:
     # 默认训练DQN
     choice = 1
 
+    agent: BaseAgent
     if choice == 1:
         # 创建DQN Agent
-        config = DQNConfig(
+        dqn_config = DQNConfig(
             learning_rate=0.001,
             gamma=0.99,
             hidden_dim=128,
@@ -62,11 +64,11 @@ def main() -> None:
         agent = DQNAgent(
             state_dim=env.state_space,
             action_dim=env.action_space,
-            config=config
+            config=dqn_config
         )
     elif choice == 2:
         # 创建Policy Gradient Agent
-        config = TrainingConfig(
+        pg_config = TrainingConfig(
             learning_rate=0.001,
             gamma=0.99,
             hidden_dim=128
@@ -74,11 +76,11 @@ def main() -> None:
         agent = PGAgent(
             state_dim=env.state_space,
             action_dim=env.action_space,
-            config=config
+            config=pg_config
         )
     elif choice == 3:
         # 创建PPO Agent
-        config = PPOConfig(
+        ppo_config = PPOConfig(
             learning_rate=0.001,
             gamma=0.99,
             hidden_dim=128,
@@ -89,7 +91,7 @@ def main() -> None:
         agent = PPOAgent(
             state_dim=env.state_space,
             action_dim=env.action_space,
-            config=config
+            config=ppo_config
         )
     else:
         raise ValueError("无效的选择")

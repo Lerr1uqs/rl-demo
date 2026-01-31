@@ -22,7 +22,7 @@ class MazeEnv:
         self.width: int = len(self.maze_map[0])
 
         # 找到起始位置（第一个R或第一个非W位置）
-        self.start_pos: List[int] = self._find_start()
+        self.start_pos: Tuple[int, int] = self._find_start()
         self.agent_pos: List[int] = list(self.start_pos)
 
         # 动作空间：上、下、左、右
@@ -33,12 +33,12 @@ class MazeEnv:
         self.step_count: int = 0
         self.max_steps: int = 200
 
-    def _find_start(self) -> List[int]:
+    def _find_start(self) -> Tuple[int, int]:
         """找到起始位置"""
         for i in range(self.height):
             for j in range(self.width):
                 if self.maze_map[i][j] == 'R':
-                    return [i, j]
+                    return (i, j)
         raise ValueError("迷宫地图中没有找到起始位置(R)")
 
     def reset(self) -> int:
