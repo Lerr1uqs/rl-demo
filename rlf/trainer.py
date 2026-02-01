@@ -18,7 +18,13 @@ from rlf.data_export import TrainingDataSaver
 class MazeTrainer:
     """可插拔的训练框架"""
 
-    def __init__(self, env: MazeEnv, agent: BaseAgent, save_data: bool = True) -> None:
+    def __init__(
+        self,
+        env: MazeEnv,
+        agent: BaseAgent,
+        save_data: bool = True,
+        save_dir: str = "./training_data"
+    ) -> None:
         self.env: MazeEnv = env
         self.agent: BaseAgent = agent
         self.agent.bind_action_mask_provider(self.env.action_mask_for_state)
@@ -29,7 +35,8 @@ class MazeTrainer:
         self.data_saver = None
         if save_data:
             self.data_saver = TrainingDataSaver(
-                policy_type=self.agent.policy_type
+                policy_type=self.agent.policy_type,
+                save_dir=save_dir
             )
 
     def train(

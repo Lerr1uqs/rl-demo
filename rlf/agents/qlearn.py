@@ -191,12 +191,15 @@ class DQNAgent(BaseAgent):
         ).squeeze()
 
         # 计算目标Q值
-        # TODO: 理解
         with torch.no_grad():
+            # shape 为 (batch_size, action_dim)
             next_q_values: torch.Tensor = self.target_net(next_states_tensor)
             if self._action_mask_provider is not None:
+                # 下一个状态采样的四个action的True/False掩码
+                # (batch_size, action_dim)
                 masks: List[List[bool]] = [
-                    self._action_mask_provider(state) for state in next_states
+                    self._action_mask_provider(state) 
+                    for state in next_states
                 ]
                 for mask in masks:
                     assert any(mask)
@@ -205,6 +208,8 @@ class DQNAgent(BaseAgent):
                     dtype=next_q_values.dtype,
                     device=next_q_values.device
                 )
+                # Loss = MSE(Q(s, a), r + γ * (1 - d) * max(Q(s', a')))
+                # Q(s', a') 也要进行位置掩码处理
                 masked_q_values = next_q_values.masked_fill(
                     mask_tensor == 0,
                     -float("inf")

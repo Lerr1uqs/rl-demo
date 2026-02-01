@@ -7,6 +7,8 @@ from rich.traceback import Traceback
 from rich.console import Console
 from loguru import logger
 from typing import List
+from enum import StrEnum
+import typer
 
 from rlf import (
     MazeEnv,
@@ -21,8 +23,34 @@ from rlf.agents.base import BaseAgent
 from rlf.schemas import TrainingConfig
 
 
-def main() -> None:
+app = typer.Typer(add_completion=False)
+
+
+class SupportedAlgorithm(StrEnum):
+    """支持的算法类型"""
+    DQN = "dqn"
+    PG = "pg"
+    PPO = "ppo"
+
+
+@app.command()
+def main(
+    algorithm: SupportedAlgorithm = typer.Option(
+        SupportedAlgorithm.DQN,
+        "--algorithm",
+        "-a",
+        help="选择要训练的算法: dqn/pg/ppo"
+    ),
+    export_dir: str = typer.Option(
+        "./training_data",
+        "--export-dir",
+        "-o",
+        help="训练数据导出目录"
+    )
+) -> None:
     """主函数"""
+    assert export_dir.strip()
+
     # 定义迷宫地图
     maze_map: List[str] = [
         "RWWWWWWWW",
@@ -40,15 +68,13 @@ def main() -> None:
 
     # 选择要训练的算法
     print("🎯 选择要训练的算法:")
-    print("   1. DQN (Off-Policy)")
-    print("   2. Policy Gradient (On-Policy)")
-    print("   3. PPO (On-Policy with Limited Reuse)")
-
-    # 默认训练DQN
-    choice = 1
+    print("   dqn: DQN (Off-Policy)")
+    print("   pg: Policy Gradient (On-Policy)")
+    print("   ppo: PPO (On-Policy with Limited Reuse)")
+    print(f"   当前选择: {algorithm.value}")
 
     agent: BaseAgent
-    if choice == 1:
+    if algorithm == SupportedAlgorithm.DQN:
         # 创建DQN Agent
         dqn_config = DQNConfig(
             learning_rate=0.001,
@@ -66,7 +92,7 @@ def main() -> None:
             action_dim=env.action_space,
             config=dqn_config
         )
-    elif choice == 2:
+    elif algorithm == SupportedAlgorithm.PG:
         # 创建Policy Gradient Agent
         pg_config = TrainingConfig(
             learning_rate=0.001,
@@ -78,7 +104,7 @@ def main() -> None:
             action_dim=env.action_space,
             config=pg_config
         )
-    elif choice == 3:
+    elif algorithm == SupportedAlgorithm.PPO:
         # 创建PPO Agent
         ppo_config = PPOConfig(
             learning_rate=0.001,
@@ -97,7 +123,12 @@ def main() -> None:
         raise ValueError("无效的选择")
 
     # 创建训练器
-    trainer = MazeTrainer(env, agent, save_data=True)
+    trainer = MazeTrainer(
+        env,
+        agent,
+        save_data=True,
+        save_dir=export_dir
+    )
 
     # 训练
     result = trainer.train(
@@ -126,7 +157,7 @@ if __name__ == "__main__":
     console = Console()
 
     try:
-        main()
+        app()
     except Exception as e:
         t = Traceback.from_exception(type(e), e, e.__traceback__)
         with console.capture() as capture:
