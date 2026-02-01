@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel, Field
 import time
 from rich import print
-from rlf.schemas import ACTION_ORDER, ACTION_SYMBOLS
+from rlf.schemas import ACTION_DELTAS, ACTION_ORDER, ACTION_SYMBOLS
 
 # ==================== 数据类定义 ====================
 
@@ -164,7 +164,10 @@ class MazeEnv:
         self.step_count += 1
         
         # 动作映射：0=上, 1=下, 2=左, 3=右
-        moves: List[Tuple[int, int]] = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        moves = [
+            ACTION_DELTAS[ord] 
+            for ord in ACTION_ORDER
+        ]
         next_pos: List[int] = [
             self.agent_pos[0] + moves[action][0],
             self.agent_pos[1] + moves[action][1]
@@ -175,7 +178,7 @@ class MazeEnv:
             info = StepInfo(hit='boundary')
             return StepResult(
                 state=self._get_state(),
-                reward=-100.0,
+                reward=-5.0,
                 done=False,
                 info=info
             )
@@ -186,7 +189,7 @@ class MazeEnv:
             info = StepInfo(hit='wall')
             return StepResult(
                 state=self._get_state(),
-                reward=-100.0,
+                reward=-2.0,
                 done=False,
                 info=info
             )

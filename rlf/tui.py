@@ -168,7 +168,8 @@ class ActionDistribution(Static):
         for index, action_name in enumerate(action_scores.action_order):
             symbol = ACTION_SYMBOLS[action_name]
             score_value = action_scores.scores[index]
-            marker = "*" if selected_index == index else " "
+            # marker = "*" if selected_index == index else " "
+            marker = " " # 因为是走一步之后的分布 下一个action还没选出来 所以不要marker
             lines.append(f"{marker} {symbol}: {score_value:.2f}")
 
         self.update("\n".join(lines))

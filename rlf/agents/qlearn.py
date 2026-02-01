@@ -90,12 +90,30 @@ class DQNAgent(BaseAgent):
         self.epsilon: float = self.config.epsilon
 
         self.train_steps: int = 0
+        self.total_steps: int = 0
+        self.last_target_update_step: int = 0
         self.total_loss: float = 0.0
         self.loss_count: int = 0
 
-    def select_action(self, state: int, training: bool = True) -> int:
+    def _valid_actions(self, action_mask: Optional[List[bool]]) -> List[int]:
+        if action_mask is None:
+            return list(range(self.action_dim))
+        assert len(action_mask) == self.action_dim
+        valid_actions = [
+            index for index, allowed in enumerate(action_mask) if allowed
+        ]
+        assert len(valid_actions) > 0
+        return valid_actions
+
+    def select_action(
+        self,
+        state: int,
+        training: bool = True,
+        action_mask: Optional[List[bool]] = None
+    ) -> int:
+        valid_actions = self._valid_actions(action_mask)
         if training and random.random() < self.epsilon:
-            return random.randint(0, self.action_dim - 1)
+            return random.choice(valid_actions)
 
         state_tensor: torch.Tensor = F.one_hot(
             torch.tensor(state),
@@ -103,6 +121,12 @@ class DQNAgent(BaseAgent):
         ).float()
         with torch.no_grad():
             q_values: torch.Tensor = self.q_net(state_tensor)
+        if action_mask is not None:
+            masked_q_values = q_values.clone()
+            for index, allowed in enumerate(action_mask):
+                if not allowed:
+                    masked_q_values[index] = -float("inf")
+            q_values = masked_q_values
         return int(q_values.argmax().item())
 
     def store_transition(
@@ -113,6 +137,7 @@ class DQNAgent(BaseAgent):
         next_state: int,
         done: bool
     ) -> None:
+        self.total_steps += 1
         transition = Transition.model_construct(
             state=state,
             action=action,
@@ -123,6 +148,12 @@ class DQNAgent(BaseAgent):
         self.replay_buffer.append(transition)
 
     def train(self) -> Optional[float]:
+        return self._train_from_buffer()
+
+    def step_train(self) -> Optional[float]:
+        return self._train_from_buffer()
+
+    def _train_from_buffer(self) -> Optional[float]:
         if len(self.replay_buffer) < self.config.batch_size:
             return None
 
@@ -160,8 +191,27 @@ class DQNAgent(BaseAgent):
         ).squeeze()
 
         # 计算目标Q值
+        # TODO: 理解
         with torch.no_grad():
-            next_q: torch.Tensor = self.target_net(next_states_tensor).max(1)[0]
+            next_q_values: torch.Tensor = self.target_net(next_states_tensor)
+            if self._action_mask_provider is not None:
+                masks: List[List[bool]] = [
+                    self._action_mask_provider(state) for state in next_states
+                ]
+                for mask in masks:
+                    assert any(mask)
+                mask_tensor = torch.tensor(
+                    masks,
+                    dtype=next_q_values.dtype,
+                    device=next_q_values.device
+                )
+                masked_q_values = next_q_values.masked_fill(
+                    mask_tensor == 0,
+                    -float("inf")
+                )
+                next_q = masked_q_values.max(1)[0]
+            else:
+                next_q = next_q_values.max(1)[0]
             target_q: torch.Tensor = rewards_tensor + \
                 self.config.gamma * next_q * (1 - dones_tensor)
 
@@ -175,8 +225,10 @@ class DQNAgent(BaseAgent):
 
         # 更新目标网络
         self.train_steps += 1
-        if self.train_steps % self.config.update_target_freq == 0:
+        if self.total_steps - self.last_target_update_step >= \
+            self.config.update_target_freq:
             self.target_net.load_state_dict(self.q_net.state_dict())
+            self.last_target_update_step = self.total_steps
 
         # 衰减epsilon
         self.epsilon = max(
@@ -249,12 +301,31 @@ class PGAgent(BaseAgent):
         self.total_loss: float = 0.0
         self.loss_count: int = 0
 
-    def select_action(self, state: int, training: bool = True) -> int:
+    def _apply_action_mask(
+        self,
+        probs: torch.Tensor,
+        action_mask: List[bool]
+    ) -> torch.Tensor:
+        assert len(action_mask) == self.action_dim
+        mask_tensor = torch.tensor(action_mask, dtype=probs.dtype, device=probs.device)
+        masked_probs = probs * mask_tensor
+        total = masked_probs.sum()
+        assert float(total.item()) > 0
+        return masked_probs / total
+
+    def select_action(
+        self,
+        state: int,
+        training: bool = True,
+        action_mask: Optional[List[bool]] = None
+    ) -> int:
         state_tensor: torch.Tensor = F.one_hot(
             torch.tensor(state),
             self.state_dim
         ).float()
         probs: torch.Tensor = self.policy_net(state_tensor)
+        if action_mask is not None:
+            probs = self._apply_action_mask(probs, action_mask)
 
         if training:
             dist = torch.distributions.Categorical(probs)

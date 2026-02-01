@@ -4,12 +4,15 @@
 """
 import time
 import numpy as np
+from loguru import logger
 from typing import Optional
 
 from rlf.env.base import MazeEnv
 from rlf.agents.base import BaseAgent
+from rlf.schemas import ACTION_SYMBOLS
 from rlf.schemas import TrainingResult, AgentStats, StepResult
 from rlf.data_export import TrainingDataSaver
+
 
 
 class MazeTrainer:
@@ -18,6 +21,7 @@ class MazeTrainer:
     def __init__(self, env: MazeEnv, agent: BaseAgent, save_data: bool = True) -> None:
         self.env: MazeEnv = env
         self.agent: BaseAgent = agent
+        self.agent.bind_action_mask_provider(self.env.action_mask_for_state)
         self.episode_rewards: list[float] = []
         self.episode_steps: list[int] = []
         self.episode_losses: list[Optional[float]] = []
@@ -44,6 +48,7 @@ class MazeTrainer:
             state: int = self.env.reset()
             episode_reward: float = 0.0
             episode_steps: int = 0
+            episode_step_losses: list[float] = []
             done: bool = False
             if self.data_saver:
                 initial_action_scores = self.agent.action_distribution(state)
@@ -57,15 +62,32 @@ class MazeTrainer:
 
             # 收集一个episode的数据
             while not done:
-                action_scores = None
-                if self.data_saver:
-                    action_scores = self.agent.action_distribution(state)
-                action: int = self.agent.select_action(state, training=True)
+
+                action_mask: list[bool] = self.env.action_mask_for_state(state)
+                action: int = self.agent.select_action(
+                    state,
+                    training=True,
+                    action_mask=action_mask
+                )
+                # action_sym = {
+                #     0: "UP",
+                #     1: "DOWN",
+                #     2: "LEFT",
+                #     3: "RIGHT"
+                # }
+                # if episode > 990:
+                    # logger.debug(f"Action: {ACTION_SYMBOLS[action_sym[action]]} at episode {episode} step {episode_steps}")
+                # logger.debug(f"Action: {action}")
                 step_result: StepResult = self.env.step(action)
 
                 # 保存步骤数据
                 if self.data_saver:
-                    assert action_scores is not None
+
+                    action_scores = None
+                    if self.data_saver:
+                        # 走了一个step之后的action分布
+                        action_scores = self.agent.action_distribution(step_result.state)
+                        
                     self.data_saver.record_step(
                         episode=episode,
                         step=episode_steps + 1,
@@ -86,6 +108,9 @@ class MazeTrainer:
                     step_result.state,
                     step_result.done
                 )
+                step_loss = self.agent.step_train()
+                if step_loss is not None:
+                    episode_step_losses.append(step_loss)
 
                 state = step_result.state
                 episode_reward += step_result.reward
@@ -93,7 +118,13 @@ class MazeTrainer:
                 done = step_result.done
 
             # 训练
-            loss: Optional[float] = self.agent.train()
+            # DQN启用step_train pg启用train(on-policy)
+            if len(episode_step_losses) > 0:
+                loss: Optional[float] = float(
+                    np.mean(episode_step_losses)
+                )
+            else:
+                loss = self.agent.train()
 
             agent_stats: AgentStats = self.agent.stats
 
@@ -249,7 +280,12 @@ class MazeTrainer:
             self.env.render()
 
         while not done and steps < 50:
-            action: int = self.agent.select_action(state, training=False)
+            action_mask: list[bool] = self.env.action_mask_for_state(state)
+            action: int = self.agent.select_action(
+                state,
+                training=False,
+                action_mask=action_mask
+            )
             step_result: StepResult = self.env.step(action)
             state = step_result.state
             total_reward += step_result.reward

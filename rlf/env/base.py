@@ -3,7 +3,7 @@
 定义迷宫环境，包括状态空间、动作空间、奖励机制等
 """
 from typing import List, Tuple
-from rlf.schemas import StepResult, StepInfo
+from rlf.schemas import StepResult, StepInfo, ACTION_ORDER, ACTION_DELTAS
 
 
 class MazeEnv:
@@ -30,6 +30,7 @@ class MazeEnv:
 
         # 动作空间：上、下、左、右
         self.action_space: int = 4
+        assert self.action_space == len(ACTION_ORDER)
         # 状态空间：位置编码
         self.state_space: int = self.height * self.width
 
@@ -56,12 +57,43 @@ class MazeEnv:
         """获取当前状态（位置编码）"""
         return self.agent_pos[0] * self.width + self.agent_pos[1]
 
+    def state_to_pos(self, state: int) -> Tuple[int, int]:
+        """将状态编码转换为坐标"""
+        row: int = state // self.width
+        col: int = state % self.width
+        return row, col
+
+    def action_mask_for_state(self, state: int) -> List[bool]:
+        """获取指定状态下的动作掩码"""
+        row, col = self.state_to_pos(state)
+        moves: List[Tuple[int, int]] = [
+            ACTION_DELTAS[action] 
+            for action in ACTION_ORDER
+        ]
+        mask: List[bool] = []
+        for move in moves:
+            next_row: int = row + move[0]
+            next_col: int = col + move[1]
+            if not (0 <= next_row < self.height and 0 <= next_col < self.width):
+                mask.append(False)
+                continue
+            cell: str = self.maze_map[next_row][next_col]
+            mask.append(cell != 'W')
+        return mask
+
+    @property
+    def action_mask(self) -> List[bool]:
+        """获取当前状态下的动作掩码"""
+        return self.action_mask_for_state(self.cur_state)
+
     def step(self, action: int) -> StepResult:
         """执行动作"""
         self.step_count += 1
 
         # 动作映射：0=上, 1=下, 2=左, 3=右
-        moves: List[Tuple[int, int]] = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        moves: List[Tuple[int, int]] = [
+            ACTION_DELTAS[action] for action in ACTION_ORDER
+        ]
         next_pos: List[int] = [
             self.agent_pos[0] + moves[action][0],
             self.agent_pos[1] + moves[action][1]

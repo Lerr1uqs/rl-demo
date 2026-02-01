@@ -3,7 +3,7 @@
 定义RL框架中使用的所有Pydantic数据模型，包括环境步进结果、Agent统计信息、训练结果等
 """
 from enum import StrEnum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -42,6 +42,13 @@ ACTION_SYMBOLS: Dict[ActionName, str] = {
     ActionName.DOWN: "↓",
     ActionName.LEFT: "←",
     ActionName.RIGHT: "→"
+}
+
+ACTION_DELTAS: Dict[ActionName, Tuple[int, int]] = {
+    ActionName.UP: (-1, 0),
+    ActionName.DOWN: (1, 0),
+    ActionName.LEFT: (0, -1),
+    ActionName.RIGHT: (0, 1)
 }
 
 

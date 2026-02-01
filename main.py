@@ -101,7 +101,7 @@ def main() -> None:
 
     # 训练
     result = trainer.train(
-        num_episodes=1000,
+        num_episodes=500,
         print_freq=50,
         render_freq=100
     )

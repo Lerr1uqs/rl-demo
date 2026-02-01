@@ -1,7 +1,3 @@
----
-Create Date: 2026-02-01
-Type: feat
----
 
 不是 DQN 不适合走迷宫，是你的"盲人版" DQN 不适合。
 迷宫是 DQN 的经典 benchmark（比如 DeepMind 早年的很多迷宫实验），但有一个前提：Agent 得看得见墙。
@@ -29,3 +25,18 @@ q_values[wall_directions] = -inf  # 彻底禁止
 这样网络虽然看不见墙，但永远不会选择撞墙动作（因为被 mask 了），剩下的就是正常路径规划。
 
 所以要为agent添加迷宫环境感知 知道哪里不能走
+
+---
+
+## Solution
+
+# Solution for Issue #9: DQN-Maze-Failure-Due-to-Partial-Observability,-Not-Algorithm
+
+## 进度记录
+- 迷宫环境新增动作掩码能力，可基于状态判断可行动作。
+- Agent 选择动作时使用掩码，避免撞墙/越界动作被采样。
+- 训练器在训练与演示阶段传入动作掩码。
+
+## 运行验证
+- 命令: `$env:PYTHONUTF8=1; .\.venv\Scripts\activate.ps1; @'from rlf import MazeEnv, DQNAgent, MazeTrainer, DQNConfig ...'@ | uv run python -`
+- 结果: 训练流程可运行，动作掩码生效无报错。

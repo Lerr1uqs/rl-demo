@@ -75,15 +75,38 @@ class PPOAgent(BaseAgent):
         self.loss_count: int = 0
         self.reuse_count: int = 0
 
-    def select_action(self, state: int, training: bool = True) -> int:
+    def _apply_action_mask(
+        self,
+        probs: torch.Tensor,
+        action_mask: List[bool]
+    ) -> torch.Tensor:
+        '''
+        先删掉无关的action的prob 然后对剩下的prob重新进行归一化
+        '''
+        assert len(action_mask) == self.action_dim
+        # 转换为01掩码
+        mask_tensor = torch.tensor(action_mask, dtype=probs.dtype, device=probs.device)
+        masked_probs = probs * mask_tensor
+        total = masked_probs.sum()
+        assert float(total.item()) > 0
+        return masked_probs / total
+
+    def select_action(
+        self,
+        state: int,
+        training: bool = True,
+        action_mask: Optional[List[bool]] = None
+    ) -> int:
         state_tensor: torch.Tensor = F.one_hot(
             torch.tensor(state),
             self.state_dim
         ).float()
         probs: torch.Tensor = self.policy_net(state_tensor)
+        if action_mask is not None:
+            probs = self._apply_action_mask(probs, action_mask)
 
         if training:
-            dist = torch.distributions.Categorical(probs)
+            dist = torch.distributions.Categorical(probs) # TODO: 这是什么？
             action: torch.Tensor = dist.sample()
             return int(action.item())
         else:
