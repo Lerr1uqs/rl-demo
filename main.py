@@ -15,9 +15,12 @@ from rlf import (
     DQNAgent,
     PGAgent,
     PPOAgent,
+    QLearningAgent,
+    SarsaAgent,
     MazeTrainer,
     DQNConfig,
-    PPOConfig
+    PPOConfig,
+    TabularConfig
 )
 from rlf.agents.base import BaseAgent
 from rlf.schemas import TrainingConfig
@@ -31,6 +34,8 @@ class SupportedAlgorithm(StrEnum):
     DQN = "dqn"
     PG = "pg"
     PPO = "ppo"
+    QLEARN = "qlearn"
+    SARSA = "sarsa"
 
 
 @app.command()
@@ -39,7 +44,7 @@ def main(
         SupportedAlgorithm.DQN,
         "--algorithm",
         "-a",
-        help="选择要训练的算法: dqn/pg/ppo"
+        help="选择要训练的算法: dqn/pg/ppo/qlearn/sarsa"
     ),
     export_dir: str = typer.Option(
         "./training_data",
@@ -71,6 +76,8 @@ def main(
     print("   dqn: DQN (Off-Policy)")
     print("   pg: Policy Gradient (On-Policy)")
     print("   ppo: PPO (On-Policy with Limited Reuse)")
+    print("   qlearn: Q-Learning (Off-Policy, Tabular)")
+    print("   sarsa: SARSA (On-Policy, Tabular)")
     print(f"   当前选择: {algorithm.value}")
 
     agent: BaseAgent
@@ -118,6 +125,34 @@ def main(
             state_dim=env.state_space,
             action_dim=env.action_space,
             config=ppo_config
+        )
+    elif algorithm == SupportedAlgorithm.QLEARN:
+        qlearn_config = TabularConfig(
+            learning_rate=0.1,
+            gamma=0.99,
+            epsilon=1.0,
+            epsilon_decay=0.995,
+            epsilon_min=0.01,
+            initial_q=0.0
+        )
+        agent = QLearningAgent(
+            state_dim=env.state_space,
+            action_dim=env.action_space,
+            config=qlearn_config
+        )
+    elif algorithm == SupportedAlgorithm.SARSA:
+        sarsa_config = TabularConfig(
+            learning_rate=0.1,
+            gamma=0.99,
+            epsilon=1.0,
+            epsilon_decay=0.995,
+            epsilon_min=0.01,
+            initial_q=0.0
+        )
+        agent = SarsaAgent(
+            state_dim=env.state_space,
+            action_dim=env.action_space,
+            config=sarsa_config
         )
     else:
         raise ValueError("无效的选择")

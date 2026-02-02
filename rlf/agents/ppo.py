@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from typing import Optional, List
 
 from rlf.agents.base import BaseAgent
-from rlf.agents.qlearn import PolicyNetwork
+from rlf.agents.pg import PolicyNetwork
 from rlf.schemas import (
     PPOConfig,
     AgentStats,

@@ -86,6 +86,16 @@ class DQNConfig(TrainingConfig):
     update_target_freq: int = Field(default=100, description="目标网络更新频率")
 
 
+class TabularConfig(BaseModel):
+    """表格型TD算法配置"""
+    learning_rate: float = Field(default=0.1, description="学习率(alpha)")
+    gamma: float = Field(default=0.99, description="折扣因子")
+    epsilon: float = Field(default=1.0, description="初始探索率")
+    epsilon_decay: float = Field(default=0.995, description="探索率衰减")
+    epsilon_min: float = Field(default=0.01, description="最小探索率")
+    initial_q: float = Field(default=0.0, description="Q表初始值")
+
+
 class PPOConfig(TrainingConfig):
     """PPO配置"""
     gae_lambda: float = Field(default=0.95, description="GAE lambda")

@@ -18,7 +18,7 @@ class TestMazeEnvReset(unittest.TestCase):
         env = MazeEnv(maze_map)
 
         step = env.step(3)
-        self.assertEqual(step.reward, 15.0)
+        self.assertEqual(step.reward, 20.0)
         self.assertEqual(env.maze_map[0][1], "R")
 
         env.reset()

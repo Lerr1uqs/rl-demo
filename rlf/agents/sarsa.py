@@ -1,6 +1,6 @@
 """
-这是一个传统Q-Learning算法模块，主要功能如下：
-实现表格型Q-Learning
+这是一个SARSA算法模块，主要功能如下：
+实现表格型SARSA
 """
 import random
 from typing import Optional, List
@@ -23,8 +23,8 @@ class QTable(BaseModel):
     values: List[List[float]] = Field(default_factory=list)
 
 
-class QLearningAgent(BaseAgent):
-    """Q-Learning Agent（表格型）"""
+class SarsaAgent(BaseAgent):
+    """SARSA Agent（表格型）"""
 
     def __init__(
         self,
@@ -33,7 +33,7 @@ class QLearningAgent(BaseAgent):
         config: Optional[TabularConfig] = None
     ) -> None:
         """
-        初始化Q-Learning Agent。
+        初始化SARSA Agent。
         args:
             state_dim (int): 状态空间维度。
             action_dim (int): 动作空间维度。
@@ -51,6 +51,8 @@ class QLearningAgent(BaseAgent):
         )
         self.epsilon: float = self.config.epsilon
         self._pending_transition: Optional[Transition] = None
+        self._cached_next_action: Optional[int] = None
+        self._cached_next_state: Optional[int] = None
 
         self.train_steps: int = 0
         self.total_td_error: float = 0.0
@@ -73,6 +75,18 @@ class QLearningAgent(BaseAgent):
             action for action in valid_actions if q_values[action] == max_q
         ]
 
+    def _choose_action(
+        self,
+        state: int,
+        action_mask: Optional[List[bool]],
+        training: bool
+    ) -> int:
+        valid_actions = self._valid_actions(action_mask)
+        if training and random.random() < self.epsilon:
+            return random.choice(valid_actions)
+        best_actions = self._best_actions(state, valid_actions)
+        return random.choice(best_actions)
+
     def _action_mask_for_state(self, state: int) -> Optional[List[bool]]:
         if self._action_mask_provider is None:
             return None
@@ -88,12 +102,21 @@ class QLearningAgent(BaseAgent):
         action_mask: Optional[List[bool]] = None
     ) -> int:
         """选择动作（epsilon-greedy）"""
-        valid_actions = self._valid_actions(action_mask)
-        if training and random.random() < self.epsilon:
-            return random.choice(valid_actions)
+        if not training:
+            self._cached_next_action = None
+            self._cached_next_state = None
+            return self._choose_action(state, action_mask, training=False)
 
-        best_actions = self._best_actions(state, valid_actions)
-        return random.choice(best_actions)
+        if (
+            self._cached_next_action is not None
+            and self._cached_next_state == state
+        ):
+            action = self._cached_next_action
+            self._cached_next_action = None
+            self._cached_next_state = None
+            return action
+
+        return self._choose_action(state, action_mask, training=True)
 
     def store_transition(
         self,
@@ -127,15 +150,18 @@ class QLearningAgent(BaseAgent):
         current_q = self.q_table.values[transition.state][transition.action]
         if transition.done:
             target = transition.reward
+            self._cached_next_action = None
+            self._cached_next_state = None
         else:
             next_mask = self._action_mask_for_state(transition.next_state)
-            next_valid_actions = self._valid_actions(next_mask)
-            next_best_actions = self._best_actions(
+            next_action = self._choose_action(
                 transition.next_state,
-                next_valid_actions
+                next_mask,
+                training=True
             )
-            next_best_action = random.choice(next_best_actions)
-            next_q = self.q_table.values[transition.next_state][next_best_action]
+            self._cached_next_action = next_action
+            self._cached_next_state = transition.next_state
+            next_q = self.q_table.values[transition.next_state][next_action]
             target = transition.reward + self.config.gamma * next_q
 
         td_error = target - current_q
@@ -168,7 +194,7 @@ class QLearningAgent(BaseAgent):
         """统计信息"""
         avg_loss = self.total_td_error / max(1, self.update_count)
         return AgentStats(
-            agent_type='Off-Policy (Q-Learning)',
+            agent_type='On-Policy (SARSA)',
             epsilon=self.epsilon,
             avg_loss=avg_loss,
             train_steps=self.train_steps,
@@ -178,4 +204,4 @@ class QLearningAgent(BaseAgent):
     @property
     def policy_type(self) -> AlgorithmType:
         """算法类型"""
-        return AlgorithmType.QLEARN
+        return AlgorithmType.SARSA

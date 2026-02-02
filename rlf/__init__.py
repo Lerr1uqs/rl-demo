@@ -3,11 +3,19 @@
 主要功能：提供强化学习框架的核心模块
 """
 from rlf.env import MazeEnv
-from rlf.agents import BaseAgent, DQNAgent, PGAgent, PPOAgent
+from rlf.agents import (
+    BaseAgent,
+    DQNAgent,
+    PGAgent,
+    PPOAgent,
+    QLearningAgent,
+    SarsaAgent
+)
 from rlf.trainer import MazeTrainer
 from rlf.schemas import (
     TrainingConfig,
     DQNConfig,
+    TabularConfig,
     PPOConfig,
     AgentStats,
     TrainingResult,
@@ -21,9 +29,12 @@ __all__ = [
     'DQNAgent',
     'PGAgent',
     'PPOAgent',
+    'QLearningAgent',
+    'SarsaAgent',
     'MazeTrainer',
     'TrainingConfig',
     'DQNConfig',
+    'TabularConfig',
     'PPOConfig',
     'AgentStats',
     'TrainingResult',
