@@ -106,7 +106,8 @@ class SarsaAgent(BaseAgent):
             self._cached_next_action = None
             self._cached_next_state = None
             return self._choose_action(state, action_mask, training=False)
-
+        
+        # train的时候就选出下一个action了 这里用cache的
         if (
             self._cached_next_action is not None
             and self._cached_next_state == state
