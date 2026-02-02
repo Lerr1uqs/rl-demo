@@ -230,9 +230,11 @@ class MazeTrainer:
         if stats.data_usage:
             print(f"   data_usage: {stats.data_usage}")
 
-    def plot_training_curves(self) -> None:
+    def plot_training_curves(self, moving_average_window: int = 20) -> None:
         """弹出窗口展示训练曲线"""
         import matplotlib.pyplot as plt
+
+        assert moving_average_window > 0
 
         episode_indices: list[int] = list(
             range(1, len(self.episode_rewards) + 1)
@@ -241,6 +243,18 @@ class MazeTrainer:
         reward_title = f"{self.agent.stats.agent_type} Reward Curve"
         plt.figure("Reward Curve")
         plt.plot(episode_indices, self.episode_rewards, label="Reward")
+        if moving_average_window > 1 and len(self.episode_rewards) >= moving_average_window:
+            reward_moving_avg = np.convolve(
+                np.array(self.episode_rewards, dtype=float),
+                np.ones(moving_average_window) / moving_average_window,
+                mode="valid"
+            )
+            reward_moving_avg_indices = episode_indices[moving_average_window - 1:]
+            plt.plot(
+                reward_moving_avg_indices,
+                reward_moving_avg,
+                label=f"Reward MA({moving_average_window})"
+            )
         plt.xlabel("Episode")
         plt.ylabel("Reward")
         plt.title(reward_title)
@@ -259,6 +273,18 @@ class MazeTrainer:
         plt.figure("Loss Curve")
         if len(loss_values) > 0:
             plt.plot(loss_episodes, loss_values, label="Loss")
+            if moving_average_window > 1 and len(loss_values) >= moving_average_window:
+                loss_moving_avg = np.convolve(
+                    np.array(loss_values, dtype=float),
+                    np.ones(moving_average_window) / moving_average_window,
+                    mode="valid"
+                )
+                loss_moving_avg_indices = loss_episodes[moving_average_window - 1:]
+                plt.plot(
+                    loss_moving_avg_indices,
+                    loss_moving_avg,
+                    label=f"Loss MA({moving_average_window})"
+                )
             plt.legend()
         else:
             plt.text(
