@@ -24,3 +24,6 @@ training_data/
 
 agent-doc/
 .iflow/
+
+tmp/
+tmp_a/
