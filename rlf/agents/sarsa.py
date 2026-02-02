@@ -172,10 +172,12 @@ class SarsaAgent(BaseAgent):
         self.total_td_error += abs(td_error)
         self.update_count += 1
 
-        self.epsilon = max(
-            self.config.epsilon_min,
-            self.epsilon * self.config.epsilon_decay
-        )
+        if transition.done:
+            self.episode_count += 1
+            self.epsilon = max(
+                self.config.epsilon_min,
+                self.epsilon * self.config.epsilon_decay
+            )
 
         return abs(td_error)
 

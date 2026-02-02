@@ -146,10 +146,13 @@ class QLearningAgent(BaseAgent):
         self.total_td_error += abs(td_error)
         self.update_count += 1
 
-        self.epsilon = max(
-            self.config.epsilon_min,
-            self.epsilon * self.config.epsilon_decay
-        )
+        if transition.done:
+            # NOTE: 每一个episode结束时更新epsilon 而不是每一个step
+            self.episode_count += 1
+            self.epsilon = max(
+                self.config.epsilon_min,
+                self.epsilon * self.config.epsilon_decay
+            )
 
         return abs(td_error)
 

@@ -276,6 +276,8 @@ class MazeTrainer:
             if moving_average_window > 1 and len(loss_values) >= moving_average_window:
                 loss_moving_avg = np.convolve(
                     np.array(loss_values, dtype=float),
+                    # 比如 window=5: 卷积核是 [0.2, 0.2, 0.2, 0.2, 0.2]
+                    # sum(loss_values * convolve)
                     np.ones(moving_average_window) / moving_average_window,
                     mode="valid"
                 )

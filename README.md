@@ -8,6 +8,7 @@ Training Notes
 - Off-policy 算法（如 DQN）支持 step 级训练：`step_train()` 会在每一步被调用。
 - On-policy 算法（如 PG、PPO）保持 episode 级训练，仅实现 `train()`。
 - 训练器会把 step 级 loss 求均值作为该 episode 的 loss，并记录到训练结果中。
+- Q-Learning/SARSA 的 epsilon 衰减按 episode 触发，避免 step 级过快衰减导致早期卡在局部循环。
 
 
 # NOTE
